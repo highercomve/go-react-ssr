@@ -27,7 +27,7 @@ func AboutPage(c echo.Context) error {
 func IndexPage(c echo.Context) error {
 	data := map[string]interface{}{
 		"message":      "Welcome from the server",
-		"initialCount": 10,
+		"initialCount": 100,
 	}
 	return c.Render(http.StatusOK, "index.html:Home.js", data)
 }

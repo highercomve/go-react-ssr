@@ -17,7 +17,7 @@ func GetEnv(key, defaultValue string) string {
 
 func GetServerAddress() string {
 	serverHost := GetEnv("SERVER_HOST", "0.0.0.0")
-	serverPort := GetEnv("SERVER_PORT", "9090")
+	serverPort := GetEnv("SERVER_PORT", "7070")
 
 	return fmt.Sprintf("%s:%s", serverHost, serverPort)
 }
