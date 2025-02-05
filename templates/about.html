@@ -1,0 +1,12 @@
+{{ extends "layout/base.html" }}
+
+{{ define "title" }}GO React SSR -- About{{ end }} 
+
+{{ define "content"}}
+<section>
+	<h1>None react content</h1>
+</section>
+<section id="react-app">
+	{{.InnerHtmlContent}}
+</section>
+{{ end }}

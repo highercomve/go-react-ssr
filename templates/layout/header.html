@@ -1,0 +1,44 @@
+{{ define "header" }}
+<nav id="navbar-main" class="navbar navbar-expand-lg bg-white">
+	<div class="container-fluid d-flex justify-content-between">
+		<a aria-current="page" class="navbar-brand active" href="/">
+			<svg
+				alt="React SSR Example"
+				height="200"
+				viewBox="0 0 100 100"
+				xmlns="http://www.w3.org/2000/svg"
+			>
+				<rect
+					x="10"
+					y="10"
+					width="80"
+					height="80"
+					rx="15"
+					ry="15"
+					stroke="black"
+					stroke-width="3"
+					fill="lightblue"
+				/>
+				<text
+					x="50%"
+					y="50%"
+					text-anchor="middle"
+					stroke="#000"
+					stroke-width="1px"
+					dy=".3em"
+					font-size="10"
+					font-family="Arial, sans-serif"
+				>
+					Go React SSR
+				</text>
+			</svg>
+		</a>
+		<div class="navbar-nav">
+			<a class="nav-link" href="/">Home</a>
+			<a class="nav-link" href="/about">About</a>
+			<a class="nav-link" href="/blog">Blog</a>
+			<a class="nav-link" href="/contact">Contact</a>
+		</div>
+	</div>
+</nav>
+{{ end }}

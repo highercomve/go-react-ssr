@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link
+			rel="preload"
+			as="style"
+			href="https://fonts.googleapis.com/css?family=Montserrat:400,500,600,700,800&display=swap"
+		/>
+		<link
+			rel="preload"
+			as="style"
+			href="https://fonts.googleapis.com/icon?family=Material+Icons"
+		/>
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/icon?family=Material+Icons"
+		/>
+		<link
+			href="https://fonts.googleapis.com/css?family=Montserrat:400,500,600,700,800&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="preload" as="style" href="assets/app.css" />
+		<link rel="stylesheet" href="assets/app.css" />
+		<title>{{ block "title" .}}{{ end }}</title>
+	</head>
+	<body class="bg-light" id="{{ .TemplateID }}" hx-ext="multi-swap,morph">
+		<header class="header">{{ block "header" .}}{{ end }}</header>
+		<section class="main">
+			<div id="page-content-wrapper">{{ block "content" .}}{{ end }}</div>
+		</section>
+		<footer class="footer-container-fluid bg-dark">
+			{{ block "footer" .}}{{ end }}
+		</footer>
+	</body>
+</html>

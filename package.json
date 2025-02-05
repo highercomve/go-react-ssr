@@ -1,0 +1,24 @@
+{
+	"name": "go-react-ssr",
+	"version": "1.0.0",
+	"description": "Javascript code to be render with go",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/highercomve/go-react-ssr.git"
+	},
+	"author": "@highercomve",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/highercomve/go-react-ssr/issues"
+	},
+	"homepage": "https://github.com/highercomve/go-react-ssr#readme",
+	"devDependencies": {
+		"@types/react": "^19.0.8",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"regenerator-runtime": "^0.14.1"
+	}
+}
