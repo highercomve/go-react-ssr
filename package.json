@@ -17,6 +17,7 @@
 	"homepage": "https://github.com/highercomve/go-react-ssr#readme",
 	"devDependencies": {
 		"@types/react": "^19.0.8",
+		"@types/react-dom": "^19.0.3",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"regenerator-runtime": "^0.14.1"
