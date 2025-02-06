@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { PokemonApiResponse, Pokemon } from "../lib/models";
 import { PokemonDetail } from "./PokemonDetail";
 
-async function fetchPokemonDetail(name) {
+async function fetchPokemonDetail(name: string) {
 	try {
 		const response = await fetch(`/pokemon/${name}`, {
 			headers: {
