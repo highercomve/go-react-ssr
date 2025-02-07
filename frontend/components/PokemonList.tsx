@@ -23,10 +23,13 @@ async function fetchPokemonDetail(name: string) {
 export function PokemonList(props: PokemonApiResponse) {
 	const { count, next, previous, results } = props;
 	const [selectedPokemon, setSelectedPokemon] = useState(null);
+	const [loading, setLoading] = useState(false);
 
 	const handlePokemonClick = async (pokemon: Pokemon) => {
+		setLoading(true);
 		const pokemonDetail = await fetchPokemonDetail(pokemon.name);
 		setSelectedPokemon(pokemonDetail);
+		setLoading(false);
 		window.history.pushState(null, "", `/pokemon/${pokemon.name}`);
 	};
 
@@ -48,7 +51,8 @@ export function PokemonList(props: PokemonApiResponse) {
 					<PokemonDetail pokemon={selectedPokemon} />
 				</div>
 			)}
-			{!selectedPokemon && (
+			{loading && <p>Loading...</p>}
+			{!selectedPokemon && !loading && (
 				<div className="pokemon-list">
 					{results.map((pokemon, index) => (
 						<div

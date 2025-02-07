@@ -11,6 +11,11 @@ export function PokemonDetail({ pokemon }: { pokemon: Pokemon }) {
 			<div className="card-header">
 				<h1 className="pokemon-name">{pokemon.name}</h1>
 				<p className="pokemon-id">ID: {pokemon.id}</p>
+				<img
+					src={pokemon.sprites.front_default}
+					alt={`${pokemon.name} image`}
+					className="pokemon-image"
+				/>
 			</div>
 			<div className="card-body">
 				<div className="pokemon-info">
