@@ -1,11 +1,13 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { PokemonList } from "../components/PokemonList";
+import { PokemonApiResponse } from "../lib/models";
 
 const container = document.getElementById("react-app");
 if (container) {
 	const root = createRoot(container);
-	const props = (window as any).INITIAL_PROPS || {};
+
+	const props: PokemonApiResponse = (window as any).INITIAL_PROPS || {};
 	try {
 		root.render(<PokemonList {...props} />);
 	} catch (error) {

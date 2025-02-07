@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { PokemonApiResponse, Pokemon } from "../lib/models";
+import { PokemonApiResponse, Pokemon, PokemonSummary } from "../lib/models";
 import { PokemonDetail } from "./PokemonDetail";
 
-async function fetchPokemonDetail(name: string) {
+async function fetchPokemonDetail(name: string): Promise<Pokemon> {
 	try {
 		const response = await fetch(`/pokemon/${name}`, {
 			headers: {
@@ -12,20 +12,22 @@ async function fetchPokemonDetail(name: string) {
 		if (!response.ok) {
 			throw new Error("Network response was not ok");
 		}
-		const data = await response.json();
+		const data: Pokemon = await response.json();
 		return data;
 	} catch (error) {
 		console.error("Failed to fetch Pokemon detail:", error);
-		return null;
+		throw error;
 	}
 }
 
 export function PokemonList(props: PokemonApiResponse) {
 	const { count, next, previous, results } = props;
-	const [selectedPokemon, setSelectedPokemon] = useState(null);
+	const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(
+		null,
+	);
 	const [loading, setLoading] = useState(false);
 
-	const handlePokemonClick = async (pokemon: Pokemon) => {
+	const handlePokemonClick = async (pokemon: PokemonSummary) => {
 		setLoading(true);
 		const pokemonDetail = await fetchPokemonDetail(pokemon.name);
 		setSelectedPokemon(pokemonDetail);
