@@ -2,6 +2,19 @@ import React from "react";
 
 // Store for registered components
 const componentRegistry = new Map();
+const componentCache = new Map();
+
+export function getCachedComponent(key) {
+	return componentCache.get(key);
+}
+
+export function setCachedComponent(key, component) {
+	componentCache.set(key, component);
+}
+
+export function invalidateCache(key) {
+	componentCache.delete(key);
+}
 
 // Client-side component registry
 export function registerComponent(name, component) {

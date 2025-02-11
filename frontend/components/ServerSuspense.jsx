@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { deserializeElement } from "../lib/rsc.helpers";
+import {
+	deserializeElement,
+	setCachedComponent,
+	getCachedComponent,
+} from "../lib/rsc.helpers";
 
 ServerSuspense.$$typeof = Symbol.for("react.client.component");
 
@@ -29,22 +33,30 @@ export function ServerSuspense({
 					component: componentPath,
 				});
 
-				const response = await fetchWithTimeout(
-					`/rsc?${queryParams}`,
-					null,
-					2000,
-				);
-				if (!response.ok) {
-					throw new Error(
-						`Failed to fetch component: ${response.statusText}`,
+				const cacheKey = `${queryParams}`;
+				let cachedComponent = getCachedComponent(cacheKey);
+
+				if (!cachedComponent) {
+					const response = await fetchWithTimeout(
+						`/rsc?${queryParams}`,
+						null,
+						2000,
 					);
+					if (!response.ok) {
+						throw new Error(
+							`Failed to fetch component: ${response.statusText}`,
+						);
+					}
+
+					const jsonData = await response.json();
+
+					const element = deserializeElement(jsonData);
+
+					setCachedComponent(cacheKey, element);
+					cachedComponent = element;
 				}
 
-				const jsonData = await response.json();
-
-				const element = deserializeElement(jsonData);
-
-				setComponent(element);
+				setComponent(cachedComponent);
 			} catch (error) {
 				console.error("Error fetching component:", error);
 				setError(error);
