@@ -1,11 +1,16 @@
 import "./polyfill";
 import React from "react";
 import { renderToString } from "react-dom/server";
-import { PokemonList } from "../components/PokemonList";
+import { Pokemons } from "../components/Pokemons";
+import { renderToJSON } from "../lib/rsc.helpers";
 
-function Render() {
+globalThis.Render = () => {
 	const props = globalThis.PROPS || {};
-	return renderToString(<PokemonList {...props} />);
-}
+	return renderToString(<Pokemons {...props} />);
+};
 
-globalThis.Render = Render;
+globalThis.RenderRSC = () => {
+	const props = globalThis.PROPS || {};
+	const element = <Pokemons {...props} />;
+	return renderToJSON(element);
+};

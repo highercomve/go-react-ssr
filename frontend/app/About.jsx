@@ -1,11 +1,10 @@
-import React from "react";
 import { hydrateRoot } from "react-dom/client";
-import { About } from "../components/About";
+import { deserializeElement } from "../lib/rsc.helpers";			
 
-const root = document.getElementById("react-app");
-const props = window.INITIAL_PROPS || {};
-try {
-	hydrateRoot(root, <About {...props} />);
-} catch (error) {
-	console.error("Root render failed:", error);
-}
+
+const container = document.getElementById("react-app");
+if (!container) throw new Error("Could not find react-app element");
+
+const clientJSX = deserializeElement(window.__INITIAL_CLIENT_JSX_STRING__);
+
+hydrateRoot(container, clientJSX);

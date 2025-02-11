@@ -14,3 +14,7 @@ export function About() {
 		</div>
 	);
 }
+
+About.$$typeof = Symbol.for('react.server.component');
+
+export default About;

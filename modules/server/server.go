@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/highercomve/go-react-ssr/modules/app"
+	"github.com/highercomve/go-react-ssr/modules/lib/rsccontext"
+	"github.com/highercomve/go-react-ssr/modules/lib/template"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -12,8 +14,11 @@ import (
 func Start(serverAddress string) {
 	e := echo.New()
 
+	renderer := template.CreateTemplateRenderer()
+	e.Renderer = renderer
+	e.Use(rsccontext.RSCContextMiddleware(renderer))
+
 	e.Static("/assets", "build")
-	e.Renderer = CreateTemplateRenderer()
 
 	corsConfig := middleware.CORSConfig{
 		Skipper:      middleware.DefaultSkipper,

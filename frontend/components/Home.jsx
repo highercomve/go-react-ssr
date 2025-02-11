@@ -1,4 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
+import { Counter } from "./Counter.jsx";
+import { WelcomeMessage } from "./WelcomeMessage.jsx";
+import { ServerSuspense } from "./ServerSuspense.jsx";
+import Loading from "./Loading.jsx";
 
 /**
  * Home component displays a welcome message.
@@ -8,27 +12,12 @@ import React, { useCallback, useEffect, useState } from "react";
  * @param {number} [props.initialCount] - Optional callback function to be called after a delay.
  */
 export function Home({ message = "", initialCount = 0 }) {
-	const [count, setCount] = useState(initialCount);
-	const [currentMessage, setCurrentMessage] = useState(message);
-
-	const increment = useCallback(() => setCount(count + 1), [count]);
-	const decrement = useCallback(() => setCount(count - 1), [count]);
-
-	useEffect(() => {
-		setTimeout(() => {
-			setCurrentMessage("Message updated after first render");
-		}, 1000);
-	}, []);
-
 	return (
 		<div className="welcome-container">
 			<h1 className="welcome-title">Welcome to Our Website</h1>
-			<p className="welcome-message">{currentMessage}</p>
-			<div className="counter">
-				<button onClick={decrement}>-</button>
-				<span>{count}</span>
-				<button onClick={increment}>+</button>
-			</div>
+			<WelcomeMessage initialMessage={message} />
+			<Counter initialCount={initialCount} />
+			<ServerSuspense fallback={<Loading />} componentPath="About.js" />
 		</div>
 	);
 }

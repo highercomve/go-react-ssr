@@ -1,11 +1,19 @@
-import React from "react";
 import { hydrateRoot } from "react-dom/client";
-import { Home } from "../components/Home";
+import { deserializeElement, registerComponent } from "../lib/rsc.helpers.jsx";
+import { Counter } from "../components/Counter";
+import { WelcomeMessage } from "../components/WelcomeMessage";
+import { About } from "../components/About";
+import { ServerSuspense } from "../components/ServerSuspense";
+import Loading from "../components/Loading";
 
-const root = document.getElementById("react-app");
-const props = window.INITIAL_PROPS || {};
-try {
-	hydrateRoot(root, <Home {...props} />);
-} catch (error) {
-	console.error("Root render failed:", error);
-}
+// Register client components
+registerComponent("Counter", Counter);
+registerComponent("WelcomeMessage", WelcomeMessage);
+registerComponent("About", About);
+registerComponent("ServerSuspense", ServerSuspense);
+registerComponent("Loading", Loading);
+
+const container = document.getElementById("react-app");
+const clientJSX = deserializeElement(window.__INITIAL_CLIENT_JSX_STRING__);
+
+hydrateRoot(container, clientJSX);

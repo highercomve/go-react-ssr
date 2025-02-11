@@ -1,4 +1,4 @@
-package server
+package template
 
 import (
 	"encoding/json"
@@ -43,6 +43,7 @@ type GeneralPayload struct {
 	ServerURL        string
 	Component        string
 	InnerHtmlContent template.HTML
+	RSCContent       string
 }
 
 var functions template.FuncMap = template.FuncMap{
@@ -102,6 +103,7 @@ func buildClientComponents() error {
 		Loader: map[string]esbuild.Loader{
 			".jsx":  esbuild.LoaderJSX,
 			".tsx":  esbuild.LoaderTSX,
+			".js":   esbuild.LoaderJSX,
 			".scss": esbuild.LoaderLocalCSS,
 		},
 	})
@@ -151,6 +153,7 @@ func buildServerComponents(jsFolder, jsOutput string) (map[string]string, error)
 		},
 		Loader: map[string]esbuild.Loader{
 			".jsx":  esbuild.LoaderJSX,
+			".js":   esbuild.LoaderJSX,
 			".tsx":  esbuild.LoaderTSX,
 			".scss": esbuild.LoaderLocalCSS,
 		},
@@ -182,7 +185,44 @@ type ReactRenderer struct {
 	name    string
 }
 
-func (renderer *ReactRenderer) Render(data interface{}) (template.HTML, error) {
+func (renderer *ReactRenderer) Render(data interface{}) (template.HTML, string, error) {
+	params, err := json.MarshalIndent(data, "", "	")
+	if err != nil {
+		return "", "", err
+	}
+
+	_, err = renderer.ctx.RunScript(renderer.content, renderer.name)
+	if err != nil {
+		fmt.Printf("errror on running component %+v\n", err)
+		return "", "", err
+	}
+
+	_, err = renderer.ctx.RunScript("globalThis.PROPS = "+string(params), "params.js")
+	if err != nil {
+		fmt.Printf("errror on setting props %+v\n", err)
+		return "", "", err
+	}
+
+	val, err := renderer.ctx.RunScript("Render()", "render.js")
+	if err != nil {
+		fmt.Printf("errror on render react %+v\n", err)
+		return "", "", err
+	}
+
+	html := template.HTML(val.String())
+
+	val, err = renderer.ctx.RunScript("RenderRSC()", "render.js")
+	if err != nil {
+		fmt.Printf("errror on render react %+v\n", err)
+		return "", "", err
+	}
+
+	jsx := val.String()
+
+	return html, jsx, nil
+}
+
+func (renderer *ReactRenderer) RenderRSC(data interface{}) (string, error) {
 	params, err := json.MarshalIndent(data, "", "	")
 	if err != nil {
 		return "", err
@@ -200,15 +240,15 @@ func (renderer *ReactRenderer) Render(data interface{}) (template.HTML, error) {
 		return "", err
 	}
 
-	val, err := renderer.ctx.RunScript("Render()", "render.js")
+	val, err := renderer.ctx.RunScript("RenderRSC()", "render.js")
 	if err != nil {
 		fmt.Printf("errror on render react %+v\n", err)
 		return "", err
 	}
 
-	html := template.HTML(val.String())
+	jsx := val.String()
 
-	return html, nil
+	return jsx, nil
 }
 
 // TemplateRenderer is a custom html/template renderer for Echo framework
@@ -241,10 +281,14 @@ func CreateTemplateRenderer() *TemplateRenderer {
 		log.Fatal(err)
 	}
 
-	return &TemplateRenderer{
+	renderer := &TemplateRenderer{
 		templates:  xt,
 		reactFiles: reactFiles,
 	}
+
+	renderer.reactCache = make(map[string]*ReactRenderer)
+
+	return renderer
 }
 
 // Render renders a template document
@@ -259,6 +303,7 @@ func (t *TemplateRenderer) Render(
 	tmplName := name
 	component := ""
 	htmlContent := template.HTML("")
+	reactJSX := ""
 
 	if len(values) == 2 {
 		tmplName = values[0]
@@ -266,30 +311,29 @@ func (t *TemplateRenderer) Render(
 	}
 
 	if strings.Contains(component, ".js") && len(t.reactFiles) > 0 {
-		htmlContent, err = t.RenderReact(c, component, data)
+		htmlContent, reactJSX, err = t.RenderReact(component, data)
 		if err != nil {
 			return err
 		}
 		name = tmplName
 	}
 
-	newData := extendPayload(data, tmplName, component, htmlContent)
+	newData := extendPayload(data, tmplName, component, htmlContent, reactJSX)
 
 	return t.templates.ExecuteTemplate(w, name, newData)
 }
 
-func (t *TemplateRenderer) RenderReact(
-	c echo.Context,
+func (t *TemplateRenderer) RenderRSC(
 	fragment string,
 	data interface{},
-) (template.HTML, error) {
+) ([]byte, error) {
 	reactRenderer, ok := t.reactCache[fragment]
 	if !ok {
 		ctx := v8go.NewContext()
 
 		content, ok := t.reactFiles[fragment]
 		if !ok {
-			return "", fmt.Errorf("react fragment not found: %s", fragment)
+			return nil, fmt.Errorf("react fragment not found: %s", fragment)
 		}
 
 		reactRenderer = &ReactRenderer{
@@ -297,6 +341,36 @@ func (t *TemplateRenderer) RenderReact(
 			content: content,
 			name:    fragment,
 		}
+		t.reactCache[fragment] = reactRenderer
+	}
+
+	jsx, err := reactRenderer.RenderRSC(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(jsx), nil
+}
+
+func (t *TemplateRenderer) RenderReact(
+	fragment string,
+	data interface{},
+) (template.HTML, string, error) {
+	reactRenderer, ok := t.reactCache[fragment]
+	if !ok {
+		ctx := v8go.NewContext()
+
+		content, ok := t.reactFiles[fragment]
+		if !ok {
+			return "", "", fmt.Errorf("react fragment not found: %s", fragment)
+		}
+
+		reactRenderer = &ReactRenderer{
+			ctx:     ctx,
+			content: content,
+			name:    fragment,
+		}
+		t.reactCache[fragment] = reactRenderer
 	}
 
 	return reactRenderer.Render(data)
@@ -307,6 +381,7 @@ func extendPayload(
 	name string,
 	component string,
 	htmlContent template.HTML,
+	rscContent string,
 ) interface{} {
 	templateID := strings.ReplaceAll(name, "/", "-")
 	templateID = strings.ReplaceAll(templateID, ".html", "")
@@ -321,6 +396,7 @@ func extendPayload(
 			"TemplateID":       templateID,
 			"ServerURL":        serverUrl,
 			"InnerHtmlContent": htmlContent,
+			"RSCContent":       rscContent,
 		}
 	}
 
@@ -331,6 +407,7 @@ func extendPayload(
 		ServerURL:        serverUrl,
 		Component:        component,
 		InnerHtmlContent: htmlContent,
+		RSCContent:       rscContent,
 	}
 }
 

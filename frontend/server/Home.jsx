@@ -1,11 +1,17 @@
-import "./polyfill";
+// import "./polyfill";
 import React from "react";
 import { renderToString } from "react-dom/server";
-import { Home } from "../components/Home";
+import { renderToJSON } from "../lib/rsc.helpers.jsx";
+import { Home } from "../components/Home.jsx";
 
-function Render() {
-	const props = globalThis.PROPS || {};
-	return renderToString(<Home {...props} />);
+function HomeServer() {
+	return <Home {...globalThis.PROPS} />;
 }
 
-globalThis.Render = Render;
+globalThis.Render = () => {
+	return renderToString(<HomeServer />);
+};
+
+globalThis.RenderRSC = () => {
+	return renderToJSON(<HomeServer />);
+};

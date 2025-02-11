@@ -1,15 +1,36 @@
 import React from "react";
 import { Pokemon } from "../lib/models";
 
-export function PokemonDetail({ pokemon }: { pokemon: Pokemon }) {
+PokemonDetail.$$typeof = Symbol.for('react.server.component');
+
+export function PokemonDetail({ pokemon, onClick }: { pokemon: Pokemon, onClick?: () => boolean }) {
 	if (!pokemon) {
 		return <div>No Pokémon data available</div>;
 	}
 
+	const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+		console.log("handleClick", e)
+		e.preventDefault(); // Prevent default link navigation
+
+		if (onClick) {
+			onClick()
+		} else {
+			window.history.back();
+		}
+	};
+
 	return (
-		<div className="pokemon-detail-card">
-			<div className="card-header">
-				<h1 className="pokemon-name">{pokemon.name}</h1>
+		<div className="pokemon-detail-container">
+			<a
+				className="back-button"
+				onClick={handleClick}
+				href="/pokemon"
+			>
+				Back
+			</a>
+			<div className="pokemon-detail-card">
+				<div className="card-header">
+					<h1 className="pokemon-name">{pokemon.name}</h1>
 				<p className="pokemon-id">ID: {pokemon.id}</p>
 				<img
 					src={pokemon.sprites.front_default}
@@ -177,6 +198,7 @@ export function PokemonDetail({ pokemon }: { pokemon: Pokemon }) {
 					<p>Latest: {pokemon.cries.latest}</p>
 					<p>Legacy: {pokemon.cries.legacy}</p>
 				</div>
+			</div>
 			</div>
 		</div>
 	);

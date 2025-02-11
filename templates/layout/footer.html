@@ -39,7 +39,7 @@
 </div>
 
 <script type="text/javascript">
-	window.INITIAL_PROPS=JSON.parse({{convertToJson .Payload}})
+    window.__INITIAL_CLIENT_JSX_STRING__={{.RSCContent}}
 </script>
 <script defer type="module" src="/assets/app/{{.Component}}"></script>
 {{ end }}
