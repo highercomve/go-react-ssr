@@ -9,9 +9,8 @@ globalThis.Render = () => {
 	return renderToString(<About {...props} />);
 };
 
-
-globalThis.RenderRSC = () => {
+globalThis.RenderRSC = async () => {
 	const props = globalThis.PROPS || {};
 	const element = <About {...props} />;
-	return renderToJSON(element);
+	return await renderToJSON(element);
 };

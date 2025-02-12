@@ -18,6 +18,9 @@ export function invalidateCache(key) {
 
 // Client-side component registry
 export function registerComponent(name, component) {
+	if (component.$$typeof === Symbol.for("react.server.component")) {
+		return;
+	}
 	componentRegistry.set(name, component);
 }
 
@@ -36,7 +39,7 @@ const REACT_SERVER_CONTEXT_DEFAULT_VALUE_NOT_LOADED = Symbol.for(
 );
 
 // Enhanced serializeElement function
-export function serializeElement(element) {
+export async function serializeElement(element) {
 	// Handle non-React elements
 	if (!React.isValidElement(element)) {
 		if (element === null || element === undefined) {
@@ -51,7 +54,7 @@ export function serializeElement(element) {
 		key = Math.random().toString(36).substring(2, 15);
 	}
 
-	// Add specific check for Suspense component
+	// Handle Suspense components
 	if (type === React.Suspense) {
 		return {
 			$$typeof: "$RS",
@@ -59,25 +62,40 @@ export function serializeElement(element) {
 				$$typeof: "$RS",
 				value: "Suspense",
 			},
-			props: serializeProps(type.$$typeof, props),
+			props: await serializeProps(type.$$typeof, props),
 			key: key,
 		};
 	}
 
 	// For function components, we need to render them to get their children
-	if (
-		typeof type === "function" &&
-		type.$$typeof !== Symbol.for("react.client.component")
-	) {
+	if (typeof type === "function") {
 		try {
-			const renderedElement = type(props);
-			const serialized = serializeElement(renderedElement);
+			let renderedElement = type(props);
+			let isAsync = false;
+			if (renderedElement instanceof Promise) {
+				renderedElement = await renderedElement;
+				isAsync = true;
+			}
+
+			const serialized = await serializeElement(renderedElement);
 			if (key != null) {
 				serialized.key = key;
 			}
-			return serialized;
+
+			serialized.isAsync = isAsync;
+
+			const serializedType = parseType(type);
+			return {
+				$$typeof: serializedType.$$typeof,
+				type: serializedType,
+				props: {
+					...props,
+					children: serialized,
+				},
+				key: key,
+			};
 		} catch (error) {
-			// console.error(`Error rendering component ${type.name}:`, error);
+			console.error(`Error rendering component ${type.name}:`, error);
 			return {
 				$$typeof:
 					type.$$typeof === Symbol.for("react.server.component")
@@ -90,7 +108,7 @@ export function serializeElement(element) {
 							: "$RC",
 					value: type.name || "Anonymous",
 				},
-				props: serializeProps(type.$$typeof, props),
+				props: await serializeProps(type.$$typeof, props),
 				key: key,
 			};
 		}
@@ -98,14 +116,19 @@ export function serializeElement(element) {
 
 	// For React elements that are server components
 	if (type.$$typeof === Symbol.for("react.server.component")) {
-		const serializedProps = serializeProps(type.$$typeof, props);
+		const serializedProps = await serializeProps(type.$$typeof, props);
+		// Check if the component is async
+		const isAsync = type.toString().includes("async function");
 		return {
 			$$typeof: "$RSC",
 			type: {
 				$$typeof: "$RSC",
 				value: type.name || "Anonymous",
 			},
-			props: serializedProps,
+			props: {
+				...serializedProps,
+			},
+			_isAsync: isAsync,
 			key: key,
 		};
 	}
@@ -116,76 +139,11 @@ export function serializeElement(element) {
 		serializedType = type;
 	} else {
 		// Handle React special types
-		const typeSymbol = type.$$typeof;
-		switch (typeSymbol) {
-			case REACT_ELEMENT_TYPE:
-				serializedType = {
-					$$typeof: "$RE",
-					value: type.name || "Element",
-				};
-				break;
-			case REACT_FRAGMENT_TYPE:
-				serializedType = {
-					$$typeof: "$RF",
-					value: "Fragment",
-				};
-				break;
-			case REACT_SUSPENSE_TYPE:
-				serializedType = {
-					$$typeof: "$RS",
-					value: "Suspense",
-				};
-				break;
-			case REACT_SUSPENSE_LIST_TYPE:
-				serializedType = {
-					$$typeof: "$RSL",
-					value: "SuspenseList",
-				};
-				break;
-			case REACT_PROVIDER_TYPE:
-				serializedType = {
-					$$typeof: "$RP",
-					value: type._context.displayName || "Provider",
-				};
-				break;
-			case REACT_SERVER_CONTEXT_TYPE:
-				serializedType = {
-					$$typeof: "$RSC",
-					value: type.displayName || "ServerContext",
-				};
-				break;
-			case REACT_FORWARD_REF_TYPE:
-				serializedType = {
-					$$typeof: "$RFR",
-					value: type.render.name || "ForwardRef",
-				};
-				break;
-			case REACT_MEMO_TYPE:
-				serializedType = {
-					$$typeof: "$RM",
-					value: type.type.name || "Memo",
-				};
-				break;
-			case REACT_LAZY_TYPE:
-				serializedType = {
-					$$typeof: "$LAZY",
-					value: type._payload?.value?.name || "Anonymous",
-				};
-				break;
-			default:
-				// Client or Server Component
-				serializedType = {
-					$$typeof:
-						type.$$typeof === Symbol.for("react.server.component")
-							? "$RSC"
-							: "$RC",
-					value: type.name || "Anonymous",
-				};
-		}
+		serializedType = parseType(type);
 	}
 
 	// Process props including children
-	const serializedProps = serializeProps(type.$$typeof, props);
+	const serializedProps = await serializeProps(type.$$typeof, props);
 
 	// For regular DOM elements and other React elements, include children in the result
 	return {
@@ -196,37 +154,116 @@ export function serializeElement(element) {
 	};
 }
 
+function parseType(type) {
+	let serializedType;
+	const typeSymbol = type.$$typeof;
+	switch (typeSymbol) {
+		case REACT_ELEMENT_TYPE:
+			serializedType = {
+				$$typeof: "$RE",
+				value: type.name || "Element",
+			};
+			break;
+		case REACT_FRAGMENT_TYPE:
+			serializedType = {
+				$$typeof: "$RF",
+				value: "Fragment",
+			};
+			break;
+		case REACT_SUSPENSE_TYPE:
+			serializedType = {
+				$$typeof: "$RS",
+				value: "Suspense",
+			};
+			break;
+		case REACT_SUSPENSE_LIST_TYPE:
+			serializedType = {
+				$$typeof: "$RSL",
+				value: "SuspenseList",
+			};
+			break;
+		case REACT_PROVIDER_TYPE:
+			serializedType = {
+				$$typeof: "$RP",
+				value: type._context.displayName || "Provider",
+			};
+			break;
+		case REACT_SERVER_CONTEXT_TYPE:
+			serializedType = {
+				$$typeof: "$RSC",
+				value: type.displayName || "ServerContext",
+			};
+			break;
+		case REACT_FORWARD_REF_TYPE:
+			serializedType = {
+				$$typeof: "$RFR",
+				value: type.render.name || "ForwardRef",
+			};
+			break;
+		case REACT_MEMO_TYPE:
+			serializedType = {
+				$$typeof: "$RM",
+				value: type.type.name || "Memo",
+			};
+			break;
+		case REACT_LAZY_TYPE:
+			serializedType = {
+				$$typeof: "$LAZY",
+				value: type._payload?.value?.name || "Anonymous",
+			};
+			break;
+		default:
+			// Client or Server Component
+			serializedType = {
+				$$typeof:
+					type.$$typeof === Symbol.for("react.server.component")
+						? "$RSC"
+						: "$RC",
+				value: type.name || "Anonymous",
+			};
+	}
+
+	return serializedType;
+}
+
 // Helper function to serialize props
-function serializeProps(type, props) {
+async function serializeProps(type, props) {
 	if (!props) return props;
 
-	return Object.fromEntries(
-		Object.entries(props).map(([key, value]) => {
+	const entries = await Promise.all(
+		Object.entries(props).map(async ([key, value]) => {
 			// Handle children prop specially
 			if (key === "children") {
 				// If children is an array
 				if (Array.isArray(value)) {
-					return [key, value.map((child) => serializeElement(child))];
+					return [
+						key,
+						await Promise.all(
+							value.map((child) => serializeElement(child)),
+						),
+					];
 				}
 				// If children is a single element
-				return [key, serializeElement(value)];
+				return [key, await serializeElement(value)];
 			}
 
 			// Handle arrays
 			if (Array.isArray(value)) {
 				return [
 					key,
-					value.map((item) =>
-						React.isValidElement(item)
-							? serializeElement(item)
-							: item,
+					await Promise.all(
+						value.map((item) =>
+							React.isValidElement(item)
+								? serializeElement(item)
+								: item,
+						),
 					),
 				];
 			}
 
 			// Handle React elements
 			if (React.isValidElement(value)) {
-				return [key, serializeElement(value)];
+				return [key, await serializeElement(value)];
 			}
 
 			// Handle functions
@@ -247,12 +284,18 @@ function serializeProps(type, props) {
 				!Array.isArray(value) &&
 				!(value instanceof Date)
 			) {
-				return [key, serializeProps(value)];
+				return [key, await serializeProps(value)];
+			}
+
+			if (value instanceof Promise) {
+				return [key, await value];
 			}
 
 			return [key, value];
 		}),
 	);
+
+	return Object.fromEntries(entries);
 }
 
 // Enhanced deserializeElement function
@@ -261,7 +304,11 @@ export function deserializeElement(json) {
 	try {
 		data = typeof json === "string" ? JSON.parse(json) : json;
 	} catch (e) {
-		data = json;
+		if (typeof json === "string") {
+			return json;
+		}
+		console.error("Failed to parse JSON:", e);
+		return null;
 	}
 
 	if (!data || typeof data !== "object") {
@@ -273,80 +320,100 @@ export function deserializeElement(json) {
 		return data.map((item) => deserializeElement(item));
 	}
 
-	// For regular DOM elements without $$typeof
-	if (!data.$$typeof && data.type && typeof data.type === "string") {
-		const { type, props, key } = data;
-		const deserializedProps = deserializeProps(props);
-		return React.createElement(type, { ...deserializedProps, key });
-	}
-
-	// Check if this is a serialized React element
-	if (data.$$typeof) {
-		const { type, props, key } = data;
-
-		// If it's a server component, directly render its children
-		if (data.$$typeof === "$RSC") {
-			return props.children ? deserializeElement(props.children) : null;
+	try {
+		// For regular DOM elements without $$typeof
+		if (!data.$$typeof && data.type && typeof data.type === "string") {
+			const { type, props, key } = data;
+			const deserializedProps = deserializeProps(props);
+			return React.createElement(type, { ...deserializedProps, key });
 		}
 
-		// Handle other React special types
-		let resolvedType;
-		switch (data.$$typeof) {
-			case "$RF":
-				resolvedType = React.Fragment;
-				break;
-			case "$RS":
-				resolvedType = React.Suspense;
-				break;
-			case "$RSL":
-				resolvedType = React.SuspenseList;
-				break;
-			case "$RP":
-				const context = getComponent(type.value);
-				resolvedType = context?.Provider;
-				break;
-			case "$RFR":
-				resolvedType = React.forwardRef(() => {
-					const Component = getComponent(type.value);
-					return Component ? <Component {...props} /> : null;
+		// Check if this is a serialized React element
+		if (data.$$typeof) {
+			const { type, props, key } = data;
+
+			// Handle server components - only deserialize their children
+			if (data.$$typeof === "$RSC") {
+				const deserializedProps = deserializeProps(props);
+				// Return only the deserialized children instead of creating a new element
+				return deserializedProps.children || null;
+			}
+
+			// Handle client components
+			if (data.$$typeof === "$RC") {
+				const Component = getComponent(type.value);
+				if (!Component) {
+					console.warn(`Client component "${type.value}" not found`);
+					// const deserializedProps = deserializeProps(props);
+					return deserializeElement(props.children);
+				}
+				const deserializedProps = deserializeProps(props);
+				return React.createElement(Component, {
+					...deserializedProps,
+					key,
 				});
-				break;
-			case "$RM":
-				const MemoComponent = getComponent(type.value);
-				resolvedType = React.memo(MemoComponent);
-				break;
-			case "$LAZY":
-				resolvedType = React.lazy(() => {
-					const component = getComponent(type.value);
-					return Promise.resolve({ default: component });
-				});
-				break;
-			case "$RCC":
-				resolvedType = getComponent(type.value);
-				break;
-			case "$RC":
-				resolvedType = getComponent(type.value);
-				break;
-			default:
-				resolvedType = type;
+			}
+
+			// Rest of the switch statement for other React types...
+			let resolvedType;
+			switch (data.$$typeof) {
+				case "$RF":
+					resolvedType = React.Fragment;
+					break;
+				case "$RS":
+					resolvedType = React.Suspense;
+					break;
+				case "$RSL":
+					resolvedType = React.SuspenseList;
+					break;
+				case "$RP":
+					const context = getComponent(type.value);
+					resolvedType = context?.Provider;
+					break;
+				case "$RFR":
+					resolvedType = React.forwardRef(() => {
+						const Component = getComponent(type.value);
+						return Component ? <Component {...props} /> : null;
+					});
+					break;
+				case "$RM":
+					const MemoComponent = getComponent(type.value);
+					resolvedType = React.memo(MemoComponent);
+					break;
+				case "$LAZY":
+					resolvedType = React.lazy(() => {
+						const component = getComponent(type.value);
+						return Promise.resolve({ default: component });
+					});
+					break;
+				case "$RCC":
+					resolvedType = getComponent(type.value);
+					break;
+				default:
+					resolvedType = type;
+			}
+
+			const deserializedProps = deserializeProps(props);
+
+			return React.createElement(resolvedType || type, {
+				...deserializedProps,
+				key,
+			});
 		}
 
-		const deserializedProps = deserializeProps(props);
+		// If it's just a plain object with type and props (DOM element)
+		if (data.type && data.props) {
+			const { type, props, key } = data;
+			const deserializedProps = deserializeProps(props);
+			return React.createElement(type, { ...deserializedProps, key });
+		}
 
-		return React.createElement(resolvedType || type, {
-			...deserializedProps,
-			key,
-		});
+		return data;
+	} catch (error) {
+		console.error("Error during deserialization:", error);
+		console.error("Problematic data:", data);
+		return null;
 	}
-
-	// If it's just a plain object with type and props (DOM element)
-	if (data.type && data.props) {
-		const { type, props, key } = data;
-		const deserializedProps = deserializeProps(props);
-		return React.createElement(type, { ...deserializedProps, key });
-	}
-
-	return data;
 }
 
 // Helper function to deserialize props
@@ -362,6 +429,9 @@ function deserializeProps(props) {
 			// Handle children specifically
 			if (Array.isArray(value)) {
 				result[key] = value.map((child) => deserializeElement(child));
+			} else if (typeof value === "string") {
+				// Return string children as-is
+				result[key] = value;
 			} else {
 				result[key] = deserializeElement(value);
 			}
@@ -421,8 +491,8 @@ export function parseJSX(key, value) {
 }
 
 // Server-side render helper
-export function renderToJSON(element) {
-	return JSON.stringify(serializeElement(element), stringifyJSX);
+export async function renderToJSON(element) {
+	return JSON.stringify(await serializeElement(element), stringifyJSX);
 }
 
 // Helper to check if a component is a valid React component
@@ -506,4 +576,76 @@ export function getComponent(name) {
 // Helper function to check if a component is registered
 export function isRegistered(name) {
 	return componentRegistry.has(name);
+}
+
+// Helper function to fetch with timeout
+function fetchWithTimeout(url, body, time = 0) {
+	return new Promise(async (resolve, reject) => {
+		try {
+			const response = await fetch(url, body);
+			setTimeout(() => {
+				resolve(response);
+			}, time);
+		} catch (e) {
+			reject(e);
+		}
+	});
+}
+
+// Updated AsyncServerComponent to match ServerSuspense behavior
+function AsyncServerComponent({ componentName, props }) {
+	const [component, setComponent] = React.useState(null);
+	const [error, setError] = React.useState(null);
+
+	React.useEffect(() => {
+		async function fetchComponent() {
+			try {
+				const filteredProps = Object.fromEntries(
+					Object.entries(props).filter(
+						([_, value]) => typeof value !== "function",
+					),
+				);
+
+				const queryParams = new URLSearchParams({
+					...filteredProps,
+					component: componentName,
+				});
+
+				const cacheKey = `${queryParams}`;
+				let cachedComponent = getCachedComponent(cacheKey);
+
+				if (!cachedComponent) {
+					const response = await fetch(`/rsc?${queryParams}`);
+
+					if (!response.ok) {
+						throw new Error(
+							`Failed to fetch component: ${response.statusText}`,
+						);
+					}
+
+					const jsonData = await response.json();
+					const element = deserializeElement(jsonData);
+
+					setCachedComponent(cacheKey, element);
+					cachedComponent = element;
+				}
+
+				setComponent(cachedComponent);
+			} catch (error) {
+				console.error(
+					`Error loading component ${componentName}:`,
+					error,
+				);
+				setError(error);
+			}
+		}
+
+		fetchComponent();
+	}, [componentName, JSON.stringify(props)]);
+
+	if (error || !component) {
+		return null;
+	}
+
+	return React.cloneElement(component, props);
 }

@@ -1,4 +1,4 @@
-package services
+package pokemonservice
 
 import (
 	"net/http"

@@ -1,4 +1,4 @@
-// import "./polyfill";
+import "./polyfill";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { renderToJSON } from "../lib/rsc.helpers.jsx";
@@ -12,6 +12,6 @@ globalThis.Render = () => {
 	return renderToString(<HomeServer />);
 };
 
-globalThis.RenderRSC = () => {
-	return renderToJSON(<HomeServer />);
+globalThis.RenderRSC = async () => {
+	return await renderToJSON(<HomeServer />);
 };

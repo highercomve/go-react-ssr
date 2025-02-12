@@ -1,11 +1,14 @@
 package main
 
 import (
+	"log"
 	"os"
 	"strings"
 
 	"github.com/highercomve/go-react-ssr/modules/lib/env"
 	"github.com/highercomve/go-react-ssr/modules/server"
+	"github.com/highercomve/go-react-ssr/modules/services/notesservice"
+	"github.com/highercomve/go-react-ssr/modules/storage"
 )
 
 func init() {
@@ -13,6 +16,21 @@ func init() {
 }
 
 func main() {
+	// Initialize the database
+	noteStorage, err := storage.NewNoteStorage("notes.db")
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+
+	// Create the notes table
+	if err := noteStorage.CreateNoteTable(); err != nil {
+		log.Fatalf("Failed to create notes table: %v", err)
+	}
+
+	// Set the note storage for the notes service
+	notesservice.SetNoteStorage(noteStorage)
+
+	// Start the server
 	server.Start(env.GetServerAddress())
 }
 

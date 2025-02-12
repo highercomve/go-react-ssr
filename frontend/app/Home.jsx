@@ -1,10 +1,9 @@
 import { hydrateRoot } from "react-dom/client";
-import { deserializeElement, registerComponent } from "../lib/rsc.helpers.jsx";
-import { Counter } from "../components/Counter";
-import { WelcomeMessage } from "../components/WelcomeMessage";
-import { About } from "../components/About";
+import { deserializeElement, registerComponent } from "../lib/rsc.helpers";
 import { ServerSuspense } from "../components/ServerSuspense";
 import Loading from "../components/Loading";
+import { Counter, WelcomeMessage } from "../components/Home";
+import { About } from "../components/About";
 
 // Register client components
 registerComponent("Counter", Counter);

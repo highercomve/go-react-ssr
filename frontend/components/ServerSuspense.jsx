@@ -52,6 +52,7 @@ export function ServerSuspense({
 
 					const element = deserializeElement(jsonData);
 
+					console.log("element", element);
 					setCachedComponent(cacheKey, element);
 					cachedComponent = element;
 				}
@@ -77,6 +78,8 @@ export function ServerSuspense({
 			errorFallback || <div>Error loading component: {error.message}</div>
 		);
 	}
+
+	console.log("component", component);
 
 	return React.cloneElement(component, props);
 }

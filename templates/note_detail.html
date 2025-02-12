@@ -1,0 +1,7 @@
+{{ extends "layout/base.html" }}
+
+{{ define "title" }}Note: {{.Payload.Title}}{{ end }} 
+
+{{ define "content"}}
+<section id="react-app">{{.InnerHtmlContent}}</section>
+{{ end }} 

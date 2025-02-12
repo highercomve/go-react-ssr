@@ -1,5 +1,5 @@
 import { hydrateRoot } from "react-dom/client";
-import { deserializeElement } from "../lib/rsc.helpers";
+import { deserializeElement } from "../../lib/rsc.helpers";
 
 declare global {
   interface Window {

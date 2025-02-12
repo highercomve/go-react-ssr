@@ -1,9 +1,9 @@
 import { hydrateRoot } from "react-dom/client";
-import { deserializeElement } from "../lib/rsc.helpers";
-import { registerComponent } from "../lib/rsc.helpers";
-import { ServerSuspense } from "../components/ServerSuspense";
-import { Pokemons } from "../components/Pokemons";
-import Loading from "../components/Loading";
+import { deserializeElement } from "../../lib/rsc.helpers";
+import { registerComponent } from "../../lib/rsc.helpers";
+import { ServerSuspense } from "../../components/ServerSuspense";
+import { Pokemons } from "../../components/Pokemon/App";
+import Loading from "../../components/Loading";
 
 declare global {
   interface Window {

@@ -1,5 +1,5 @@
 import React from "react";
-import { PokemonApiResponse, PokemonSummary } from "../lib/models";
+import { PokemonApiResponse, PokemonSummary } from "../../lib/models";
 
 interface PokemonListProps extends PokemonApiResponse {
 	onPokemonClick: (pokemon: PokemonSummary) => void;

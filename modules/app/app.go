@@ -2,9 +2,9 @@ package app
 
 import (
 	"net/http"
+	"strconv"
 
-	"github.com/highercomve/go-react-ssr/modules/lib/rsccontext"
-	"github.com/highercomve/go-react-ssr/modules/services"
+	"github.com/highercomve/go-react-ssr/modules/lib/pokemon"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -17,16 +17,10 @@ func LoadApp(e *echo.Echo) *echo.Group {
 	}))
 
 	app.GET("/about", AboutPage)
-	app.GET("/pokemon", GetAllPokemonPage)
-	app.GET("/pokemon/:name", GetPokemonPage)
-	app.GET("/rsc", RSC)
+	app.GET("/pokemon", GetAllPokemon)
+	app.GET("/pokemon/:name", GetPokemon)
 
 	return app
-}
-
-var handlers = map[string]func(echo.Context) (interface{}, error){
-	"PokemonList.js":   services.GetAllPokemon,
-	"PokemonDetail.js": services.GetPokemon,
 }
 
 func AboutPage(c echo.Context) error {
@@ -34,57 +28,48 @@ func AboutPage(c echo.Context) error {
 	return c.Render(http.StatusOK, "about.html:About.js", data)
 }
 
-func IndexPage(c echo.Context) error {
-	data := map[string]interface{}{
-		"message":      "Welcome from the server",
-		"initialCount": 100,
-	}
-	return c.Render(http.StatusOK, "index.html:Home.js", data)
-}
+func GetAllPokemon(c echo.Context) error {
+	client := pokemon.NewApi()
+	limitQuery := c.QueryParam("limit")
+	offsetQuery := c.QueryParam("offset")
 
-func GetAllPokemonPage(c echo.Context) error {
-	response, err := services.GetAllPokemon(c)
-	if err != nil {
-		return err
-	}
+	limit := 1000
+	offset := 0
 
-	return c.Render(http.StatusOK, "pokemon_list.html:PokemonList.js", response)
-}
-
-func GetPokemonPage(c echo.Context) error {
-	c.QueryParams().Set("name", c.Param("name"))
-
-	response, err := services.GetPokemon(c)
-	if err != nil {
-		return err
-	}
-
-	return c.Render(http.StatusOK, "pokemon_detail.html:PokemonDetail.js", response)
-}
-
-func RSC(c echo.Context) error {
-	component := c.QueryParam("component")
-	rscContext := c.(*rsccontext.RSCContext)
-	renderer := rscContext.TemplateRenderer
-
-	var data interface{}
-	var err error
-
-	// Find and execute handler for path
-	if handler, exists := handlers[component]; exists {
-		data, err = handler(c)
-		if err != nil {
-			if he, ok := err.(*echo.HTTPError); ok {
-				return c.JSON(he.Code, map[string]string{"error": he.Message.(string)})
-			}
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch data"})
+	if limitQuery != "" {
+		parsedLimit, err := strconv.Atoi(limitQuery)
+		if err == nil {
+			limit = parsedLimit
 		}
 	}
 
-	jsx, err := renderer.RenderRSC(component, data)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to render RSC"})
+	if offsetQuery != "" {
+		parsedOffset, err := strconv.Atoi(offsetQuery)
+		if err == nil {
+			offset = parsedOffset
+		}
 	}
 
-	return c.Blob(http.StatusOK, "application/json", jsx)
+	response, err := client.GetAll(c.Request().Context(), limit, offset)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch pokemons"})
+	}
+
+	return c.Render(http.StatusOK, "pokemon_list.html:Pokemon/List.js", response)
+}
+
+func GetPokemon(c echo.Context) error {
+	client := pokemon.NewApi()
+	name := c.Param("name")
+
+	response, err := client.GetByIDOrName(c.Request().Context(), name)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch pokemon"})
+	}
+
+	if c.Request().Header.Get("Content-Type") == "application/json" {
+		return c.JSON(http.StatusOK, response)
+	}
+
+	return c.Render(http.StatusOK, "pokemon_detail.html:Pokemon/Detail.js", response)
 }

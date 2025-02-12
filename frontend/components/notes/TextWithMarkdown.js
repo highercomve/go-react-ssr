@@ -1,0 +1,43 @@
+/**
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+import React from "react";
+
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
+
+TextWithMarkdown.$$typeof = Symbol.for("react.server.component");
+
+const allowedTags = sanitizeHtml.defaults.allowedTags.concat([
+	"img",
+	"h1",
+	"h2",
+	"h3",
+]);
+const allowedAttributes = Object.assign(
+	{},
+	sanitizeHtml.defaults.allowedAttributes,
+	{
+		img: ["alt", "src"],
+	},
+);
+
+export default function TextWithMarkdown({ text }) {
+	return (
+		<div
+			className="text-with-markdown"
+			dangerouslySetInnerHTML={{
+				__html: sanitizeHtml(marked(text), {
+					allowedTags,
+					allowedAttributes,
+				}),
+			}}
+		/>
+	);
+}
+
+TextWithMarkdown.$$typeof = Symbol.for("react.server.component");

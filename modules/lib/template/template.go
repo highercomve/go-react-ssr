@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	esbuild "github.com/evanw/esbuild/pkg/api"
 	"github.com/highercomve/go-react-ssr/modules/lib/env"
@@ -191,6 +192,11 @@ func (renderer *ReactRenderer) Render(data interface{}) (template.HTML, string, 
 		return "", "", err
 	}
 
+	fmt.Println("renderer.content", renderer.content)
+	fmt.Println("renderer.name", renderer.name)
+	fmt.Println("params", string(params))
+	fmt.Printf("data %+v\n", data)
+
 	_, err = renderer.ctx.RunScript(renderer.content, renderer.name)
 	if err != nil {
 		fmt.Printf("errror on running component %+v\n", err)
@@ -217,7 +223,21 @@ func (renderer *ReactRenderer) Render(data interface{}) (template.HTML, string, 
 		return "", "", err
 	}
 
-	jsx := val.String()
+	promise, err := val.AsPromise()
+	if err != nil {
+		fmt.Printf("errror on render react %+v\n", err)
+		return "", "", err
+	}
+
+	for promise.State() != v8go.Fulfilled {
+		if promise.State() == v8go.Rejected {
+			return "", "", fmt.Errorf("error on render react %+v\n", promise.Result().String())
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	jsx := promise.Result().String()
 
 	return html, jsx, nil
 }
@@ -246,7 +266,21 @@ func (renderer *ReactRenderer) RenderRSC(data interface{}) (string, error) {
 		return "", err
 	}
 
-	jsx := val.String()
+	promise, err := val.AsPromise()
+	if err != nil {
+		fmt.Printf("errror on render react %+v\n", err)
+		return "", err
+	}
+
+	for promise.State() != v8go.Fulfilled {
+		time.Sleep(100 * time.Millisecond)
+
+		if promise.State() == v8go.Rejected {
+			return "", fmt.Errorf("error on render react %+v\n", promise.Result().String())
+		}
+	}
+
+	jsx := promise.Result().String()
 
 	return jsx, nil
 }

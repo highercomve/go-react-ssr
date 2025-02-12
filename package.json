@@ -18,9 +18,14 @@
 	"devDependencies": {
 		"@types/react": "^19.0.8",
 		"@types/react-dom": "^19.0.3",
+		"buffer": "^6.0.3",
+		"date-fns": "^4.1.0",
+		"events": "^3.3.0",
+		"excerpts": "^0.0.3",
+		"marked": "^15.0.7",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
-		"regenerator-runtime": "^0.14.1"
-	},
-	"dependencies": {}
+		"regenerator-runtime": "^0.14.1",
+		"sanitize-html": "^2.14.0"
+	}
 }
